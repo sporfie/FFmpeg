@@ -3469,6 +3469,8 @@ mpeg2_metadata_bsf_select="cbs_mpeg2"
 trace_headers_bsf_select="cbs cbs_vp8"
 vp9_metadata_bsf_select="cbs_vp9"
 vvc_metadata_bsf_select="cbs_h266"
+h264_abstimecode_bsf_deps="const_nan"
+h264_abstimecode_bsf_select="cbs_h264"
 
 # external libraries
 aac_at_decoder_deps="audiotoolbox"
