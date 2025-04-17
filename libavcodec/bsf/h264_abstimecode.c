@@ -35,6 +35,17 @@
 #include "h2645data.h"
 #include "sei.h"
 
+#include <arpa/inet.h>  /* For htonl, ntohl, etc. */
+#include <netinet/in.h> /* For additional network functions */
+
+#ifndef htonll
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+#define htonll(x) ((((uint64_t)htonl(x & 0xFFFFFFFF)) << 32) | htonl(x >> 32))
+#else
+#define htonll(x) (x)
+#endif
+#endif
+
 #define MAX_FILTER_CONTEXTS 10
 uint8_t sporfie_abstimecode_uuid[16] = {0x73, 0x70, 0x6F, 0x72, 0x66, 0x69, 0x65, 0x5F, 0x61, 0x62, 0x73, 0x74, 0x69, 0x6D, 0x65, 0x5F};
 
@@ -129,7 +140,7 @@ static int h264_abstimecode_update_fragment(AVBSFContext *bsf, AVPacket *pkt, Co
     {
         filter_ctx->first_abs_time = av_gettime() + ctx->offset;
         filter_ctx->first_pts = pkt->pts;
-        av_log(bsf, AV_LOG_DEBUG, "First frame PTS: %lld at %lld\n", filter_ctx->first_pts, filter_ctx->first_abs_time);
+        av_log(bsf, AV_LOG_DEBUG, "First frame PTS: %ld at %ld\n", filter_ctx->first_pts, filter_ctx->first_abs_time);
     }
     pts_time_us = av_rescale_q(pkt->pts - filter_ctx->first_pts, pkt->time_base, AV_TIME_BASE_Q);
     abs_time = pts_time_us + filter_ctx->first_abs_time;
@@ -143,7 +154,7 @@ static int h264_abstimecode_update_fragment(AVBSFContext *bsf, AVPacket *pkt, Co
         return err;
     }
 
-    av_log(bsf, AV_LOG_DEBUG, "Added user data SEI message to access unit: pts %lld, epoch %lld\n", pts_time_us, abs_time);
+    av_log(bsf, AV_LOG_DEBUG, "Added user data SEI message to access unit: pts %ld, epoch %ld\n", pts_time_us, abs_time);
     return 0;
 }
 
