@@ -49,6 +49,7 @@ typedef struct H264AbsTimeCodeContext
 {
     CBSBSFContext common;
     uint64_t frames;
+    uint64_t offset;
     H264AbsTimeCodeFilterContext filter_ctx[MAX_FILTER_CONTEXTS];
 } H264AbsTimeCodeContext;
 
@@ -126,7 +127,7 @@ static int h264_abstimecode_update_fragment(AVBSFContext *bsf, AVPacket *pkt, Co
     // between the current frame and the first frame.
     if (filter_ctx->first_abs_time == 0)
     {
-        filter_ctx->first_abs_time = av_gettime();
+        filter_ctx->first_abs_time = av_gettime() + ctx->offset;
         filter_ctx->first_pts = pkt->pts;
         av_log(bsf, AV_LOG_DEBUG, "First frame PTS: %lld at %lld\n", filter_ctx->first_pts, filter_ctx->first_abs_time);
     }
@@ -164,7 +165,8 @@ static int h264_abstimecode_init(AVBSFContext *bsf)
 #define OFFSET(x) offsetof(H264AbsTimeCodeContext, x)
 #define FLAGS (AV_OPT_FLAG_VIDEO_PARAM | AV_OPT_FLAG_BSF_PARAM)
 static const AVOption h264_abstimecode_options[] = {
-    {"frames", "Which frames to insert timecode into (0=key frames, 1=all)", OFFSET(frames), AV_OPT_TYPE_UINT64, {.i64 = 0}, .flags = FLAGS},
+    {"frames", "Which frames to insert timecode into (0=key frames, 1=all)", OFFSET(frames), AV_OPT_TYPE_UINT64, {.i64 = 0}, 0, 1, .flags = FLAGS},
+    {"offset", "Offset from actual time in microseconds", OFFSET(offset), AV_OPT_TYPE_UINT64, {.i64 = 0}, -60000000, 60000000, .flags = FLAGS},
     {NULL}};
 
 static const AVClass h264_abstimecode_class = {
