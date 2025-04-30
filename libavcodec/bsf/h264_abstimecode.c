@@ -103,7 +103,8 @@ static int h264_abstimecode_update_fragment(AVBSFContext *bsf, AVPacket *pkt, Co
     H264AbsTimeCodeContext *ctx = bsf->priv_data;
     H264AbsTimeCodeData *tcd = NULL;
     H264AbsTimeCodeFilterContext *filter_ctx = NULL;
-    int64_t pts_time_us, abs_time;
+    AVProducerReferenceTime *prft = NULL;
+    int64_t pts_us, abs_time = 0;
     int err, isKey, insert;
 
     if (!pkt)
@@ -113,6 +114,12 @@ static int h264_abstimecode_update_fragment(AVBSFContext *bsf, AVPacket *pkt, Co
     insert = ctx->frames == 1 || isKey;
     if (!insert)
         return 0;
+
+    if (pkt->pts == AV_NOPTS_VALUE)
+    {
+        av_log(bsf, AV_LOG_DEBUG, "Invalid PTS value ignored\n");
+        return 0;
+    }
 
     filter_ctx = context_for_stream(bsf);
     if (filter_ctx == NULL)
@@ -132,18 +139,33 @@ static int h264_abstimecode_update_fragment(AVBSFContext *bsf, AVPacket *pkt, Co
     tcd->udu.data = (uint8_t *)&(tcd->abs_time);
     tcd->udu.data_length = sizeof(int64_t);
 
-    // We need to set the frame's absolute time in the SEI message.
-    // At this point, we derive it from the current time: the first received frame will have its absolute time set to the current
-    // time, and the subsequent frames will have their absolute time set to that time plus the difference, in PTS,
-    // between the current frame and the first frame.
-    if (filter_ctx->first_abs_time == 0)
+    pts_us = av_rescale_q(pkt->pts, pkt->time_base, AV_TIME_BASE_Q);
+
+    // Look for the absolute time in the side data, the RTSP source will put it there if available.
+    prft = (AVProducerReferenceTime *)av_packet_get_side_data(pkt, AV_PKT_DATA_PRFT, NULL);
+    if (prft)
     {
-        filter_ctx->first_abs_time = av_gettime() + ctx->offset;
-        filter_ctx->first_pts = pkt->pts;
-        av_log(bsf, AV_LOG_DEBUG, "First frame PTS: %ld at %ld\n", filter_ctx->first_pts, filter_ctx->first_abs_time);
+        abs_time = prft->wallclock;
+        av_log(bsf, AV_LOG_TRACE, "From RTSP: pts %lld, epoch %lld, base: %lld\n", pts_us, abs_time, abs_time - pts_us);
     }
-    pts_time_us = av_rescale_q(pkt->pts - filter_ctx->first_pts, pkt->time_base, AV_TIME_BASE_Q);
-    abs_time = pts_time_us + filter_ctx->first_abs_time;
+
+    // Otherwise figure it out ourselves
+    if (abs_time == 0)
+    {
+        int64_t rel_pts_us;
+        // We need to set the frame's absolute time in the SEI message.
+        // At this point, we derive it from the current time: the first received frame will have its absolute time set to the current
+        // time, and the subsequent frames will have their absolute time set to that time plus the difference, in PTS,
+        // between the current frame and the first frame.
+        if (filter_ctx->first_abs_time == 0)
+        {
+            filter_ctx->first_abs_time = av_gettime() + ctx->offset;
+            filter_ctx->first_pts = pkt->pts;
+            av_log(bsf, AV_LOG_INFO, "First frame pts %lld, epoch %lld\n", pts_us, filter_ctx->first_abs_time);
+        }
+        rel_pts_us = av_rescale_q(pkt->pts - filter_ctx->first_pts, pkt->time_base, AV_TIME_BASE_Q);
+        abs_time = filter_ctx->first_abs_time + rel_pts_us;
+    }
     tcd->abs_time = htonll(abs_time);
 
     err = ff_cbs_sei_add_message(ctx->common.output, au, 1, SEI_TYPE_USER_DATA_UNREGISTERED, tcd, tcd);
@@ -154,7 +176,7 @@ static int h264_abstimecode_update_fragment(AVBSFContext *bsf, AVPacket *pkt, Co
         return err;
     }
 
-    av_log(bsf, AV_LOG_DEBUG, "Added user data SEI message to access unit: pts %ld, epoch %ld\n", pts_time_us, abs_time);
+    av_log(bsf, AV_LOG_TRACE, "Added user data SEI message to access unit: pts %lld, epoch %lld, base %lld\n", pts_us, abs_time, abs_time - pts_us);
     return 0;
 }
 
