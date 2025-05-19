@@ -3,6 +3,7 @@
     "opt.h": "c",
     "time.h": "c",
     "mem_internal.h": "c",
-    "refstruct.h": "c"
+    "refstruct.h": "c",
+    "avstring.h": "c"
   }
 }

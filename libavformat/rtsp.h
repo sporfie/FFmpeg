@@ -36,19 +36,20 @@
 /**
  * Network layer over which RTP/etc packet data will be transported.
  */
-enum RTSPLowerTransport {
+enum RTSPLowerTransport
+{
     RTSP_LOWER_TRANSPORT_UDP = 0,           /**< UDP/unicast */
     RTSP_LOWER_TRANSPORT_TCP = 1,           /**< TCP; interleaved in RTSP */
     RTSP_LOWER_TRANSPORT_UDP_MULTICAST = 2, /**< UDP/multicast */
     RTSP_LOWER_TRANSPORT_NB,
-    RTSP_LOWER_TRANSPORT_HTTP = 8,          /**< HTTP tunneled - not a proper
-                                                 transport mode as such,
-                                                 only for use via AVOptions */
-    RTSP_LOWER_TRANSPORT_HTTPS,             /**< HTTPS tunneled */
-    RTSP_LOWER_TRANSPORT_CUSTOM = 16,       /**< Custom IO - not a public
-                                                 option for lower_transport_mask,
-                                                 but set in the SDP demuxer based
-                                                 on a flag. */
+    RTSP_LOWER_TRANSPORT_HTTP = 8,    /**< HTTP tunneled - not a proper
+                                           transport mode as such,
+                                           only for use via AVOptions */
+    RTSP_LOWER_TRANSPORT_HTTPS,       /**< HTTPS tunneled */
+    RTSP_LOWER_TRANSPORT_CUSTOM = 16, /**< Custom IO - not a public
+                                           option for lower_transport_mask,
+                                           but set in the SDP demuxer based
+                                           on a flag. */
 };
 
 /**
@@ -56,7 +57,8 @@ enum RTSPLowerTransport {
  * commonly send RDT (although they can sometimes send RTP as well),
  * whereas most others will send RTP.
  */
-enum RTSPTransport {
+enum RTSPTransport
+{
     RTSP_TRANSPORT_RTP, /**< Standards-compliant RTP */
     RTSP_TRANSPORT_RDT, /**< Realmedia Data Transport */
     RTSP_TRANSPORT_RAW, /**< Raw data (over UDP) */
@@ -67,13 +69,14 @@ enum RTSPTransport {
  * Transport mode for the RTSP data. This may be plain, or
  * tunneled, which is done over HTTP.
  */
-enum RTSPControlTransport {
-    RTSP_MODE_PLAIN,   /**< Normal RTSP */
-    RTSP_MODE_TUNNEL   /**< RTSP over HTTP (tunneling) */
+enum RTSPControlTransport
+{
+    RTSP_MODE_PLAIN, /**< Normal RTSP */
+    RTSP_MODE_TUNNEL /**< RTSP over HTTP (tunneling) */
 };
 
-#define RTSP_DEFAULT_PORT   554
-#define RTSPS_DEFAULT_PORT  322
+#define RTSP_DEFAULT_PORT 554
+#define RTSPS_DEFAULT_PORT 322
 #define RTSP_MAX_TRANSPORTS 8
 #define RTSP_DEFAULT_AUDIO_SAMPLERATE 44100
 #define RTSP_RTP_PORT_MIN 5000
@@ -87,7 +90,8 @@ enum RTSPControlTransport {
  * client_port=1000-1001;server_port=1800-1801") and described in separate
  * RTSPTransportFields.
  */
-typedef struct RTSPTransportField {
+typedef struct RTSPTransportField
+{
     /** interleave ids, if TCP transport; each TCP/RTSP data packet starts
      * with a '$', stream length and stream ID. If the stream ID is within
      * the range of this interleaved_min-max, then the packet belongs to
@@ -114,7 +118,7 @@ typedef struct RTSPTransportField {
     int mode_record;
 
     struct sockaddr_storage destination; /**< destination IP address */
-    char source[INET6_ADDRSTRLEN + 1]; /**< source IP address */
+    char source[INET6_ADDRSTRLEN + 1];   /**< source IP address */
 
     /** data/packet transport protocol; e.g. RTP or RDT */
     enum RTSPTransport transport;
@@ -126,7 +130,8 @@ typedef struct RTSPTransportField {
 /**
  * This describes the server response to each RTSP command.
  */
-typedef struct RTSPMessageHeader {
+typedef struct RTSPMessageHeader
+{
     /** length of the data following this header */
     int content_length;
 
@@ -143,7 +148,7 @@ typedef struct RTSPMessageHeader {
      * to a SETUP RTSP command by the client */
     RTSPTransportField transports[RTSP_MAX_TRANSPORTS];
 
-    int seq;                         /**< sequence number */
+    int seq; /**< sequence number */
 
     /** the "Session:" field. This value is initially set by the server and
      * should be re-transmitted by the client in every RTSP command. */
@@ -199,22 +204,24 @@ typedef struct RTSPMessageHeader {
  * setup-but-not-receiving (PAUSED). State can be changed in applications
  * by calling av_read_play/pause().
  */
-enum RTSPClientState {
-    RTSP_STATE_IDLE,    /**< not initialized */
+enum RTSPClientState
+{
+    RTSP_STATE_IDLE,      /**< not initialized */
     RTSP_STATE_STREAMING, /**< initialized and sending/receiving data */
-    RTSP_STATE_PAUSED,  /**< initialized, but not receiving data */
-    RTSP_STATE_SEEKING, /**< initialized, requesting a seek */
+    RTSP_STATE_PAUSED,    /**< initialized, but not receiving data */
+    RTSP_STATE_SEEKING,   /**< initialized, requesting a seek */
 };
 
 /**
  * Identify particular servers that require special handling, such as
  * standards-incompliant "Transport:" lines in the SETUP request.
  */
-enum RTSPServerType {
-    RTSP_SERVER_RTP,  /**< Standards-compliant RTP-server */
-    RTSP_SERVER_REAL, /**< Realmedia-style server */
-    RTSP_SERVER_WMS,  /**< Windows Media server */
-    RTSP_SERVER_SATIP,/**< SAT>IP server */
+enum RTSPServerType
+{
+    RTSP_SERVER_RTP,   /**< Standards-compliant RTP-server */
+    RTSP_SERVER_REAL,  /**< Realmedia-style server */
+    RTSP_SERVER_WMS,   /**< Windows Media server */
+    RTSP_SERVER_SATIP, /**< SAT>IP server */
     RTSP_SERVER_NB
 };
 
@@ -223,9 +230,10 @@ enum RTSPServerType {
  *
  * @todo Use AVIOContext instead of URLContext
  */
-typedef struct RTSPState {
-    const AVClass *class;             /**< Class for private options. */
-    URLContext *rtsp_hd; /* RTSP TCP connection handle */
+typedef struct RTSPState
+{
+    const AVClass *class; /**< Class for private options. */
+    URLContext *rtsp_hd;  /* RTSP TCP connection handle */
 
     /** number of items in the 'rtsp_streams' variable */
     int nb_rtsp_streams;
@@ -246,7 +254,7 @@ typedef struct RTSPState {
      * see rtsp_read_play() and rtsp_read_seek(). */
     int64_t seek_timestamp;
 
-    int seq;                          /**< RTSP command sequence number */
+    int seq; /**< RTSP command sequence number */
 
     /** copy of RTSPMessageHeader->session_id, i.e. the server-provided session
      * identifier that the client should re-transmit in each RTSP command */
@@ -344,7 +352,7 @@ typedef struct RTSPState {
     int nb_byes;
 
     /** Reusable buffer for receiving packets */
-    uint8_t* recvbuf;
+    uint8_t *recvbuf;
 
     /**
      * A mask with all requested transport methods
@@ -415,23 +423,34 @@ typedef struct RTSPState {
      */
     char *user_agent;
 
+    /**
+     * Sporfie: Disable the insertion of the Producer Reference Time in the packet metadata
+     */
+    int disable_prt;
+
+    /**
+     * Sporfie: Disable the use of NTP time to compute the RTP timestamp
+     */
+    int disable_ntp_sync;
+
     char default_lang[4];
     int buffer_size;
     int pkt_size;
     char *localaddr;
 } RTSPState;
 
-#define RTSP_FLAG_FILTER_SRC  0x1    /**< Filter incoming UDP packets -
-                                          receive packets only from the right
+#define RTSP_FLAG_FILTER_SRC 0x1     /**< Filter incoming UDP packets -       \
+                                          receive packets only from the right \
                                           source address and port. */
-#define RTSP_FLAG_LISTEN      0x2    /**< Wait for incoming connections. */
-#define RTSP_FLAG_CUSTOM_IO   0x4    /**< Do all IO via the AVIOContext. */
-#define RTSP_FLAG_RTCP_TO_SOURCE 0x8 /**< Send RTCP packets to the source
+#define RTSP_FLAG_LISTEN 0x2         /**< Wait for incoming connections. */
+#define RTSP_FLAG_CUSTOM_IO 0x4      /**< Do all IO via the AVIOContext. */
+#define RTSP_FLAG_RTCP_TO_SOURCE 0x8 /**< Send RTCP packets to the source \
                                           address of received packets. */
-#define RTSP_FLAG_PREFER_TCP  0x10   /**< Try RTP via TCP first if possible. */
-#define RTSP_FLAG_SATIP_RAW   0x20   /**< Export SAT>IP stream as raw MPEG-TS */
+#define RTSP_FLAG_PREFER_TCP 0x10    /**< Try RTP via TCP first if possible. */
+#define RTSP_FLAG_SATIP_RAW 0x20     /**< Export SAT>IP stream as raw MPEG-TS */
 
-typedef struct RTSPSource {
+typedef struct RTSPSource
+{
     char addr[128]; /**< Source-specific multicast include source IP address (from SDP content) */
 } RTSPSource;
 
@@ -441,9 +460,10 @@ typedef struct RTSPSource {
  * AVStreams. In this case, each AVStream in this set has similar content
  * (but different codec/bitrate).
  */
-typedef struct RTSPStream {
-    URLContext *rtp_handle;   /**< RTP stream handle (if UDP) */
-    void *transport_priv; /**< RTP/RDT parse context if input, RTP AVFormatContext if output */
+typedef struct RTSPStream
+{
+    URLContext *rtp_handle; /**< RTP stream handle (if UDP) */
+    void *transport_priv;   /**< RTP/RDT parse context if input, RTP AVFormatContext if output */
 
     /** corresponding stream index, if any. -1 if none (MPEG2TS case) */
     int stream_index;
@@ -452,18 +472,18 @@ typedef struct RTSPStream {
      * for the selected transport. Only used for TCP. */
     int interleaved_min, interleaved_max;
 
-    char control_url[MAX_URL_SIZE];   /**< url for this stream (from SDP) */
+    char control_url[MAX_URL_SIZE]; /**< url for this stream (from SDP) */
 
     /** The following are used only in SDP, not RTSP */
     //@{
-    int sdp_port;             /**< port (from SDP content) */
-    struct sockaddr_storage sdp_ip; /**< IP address (from SDP content) */
-    int nb_include_source_addrs; /**< Number of source-specific multicast include source IP addresses (from SDP content) */
+    int sdp_port;                             /**< port (from SDP content) */
+    struct sockaddr_storage sdp_ip;           /**< IP address (from SDP content) */
+    int nb_include_source_addrs;              /**< Number of source-specific multicast include source IP addresses (from SDP content) */
     struct RTSPSource **include_source_addrs; /**< Source-specific multicast include source IP addresses (from SDP content) */
-    int nb_exclude_source_addrs; /**< Number of source-specific multicast exclude source IP addresses (from SDP content) */
+    int nb_exclude_source_addrs;              /**< Number of source-specific multicast exclude source IP addresses (from SDP content) */
     struct RTSPSource **exclude_source_addrs; /**< Source-specific multicast exclude source IP addresses (from SDP content) */
-    int sdp_ttl;              /**< IP Time-To-Live (from SDP content) */
-    int sdp_payload_type;     /**< payload type */
+    int sdp_ttl;                              /**< IP Time-To-Live (from SDP content) */
+    int sdp_payload_type;                     /**< payload type */
     //@}
 
     /** The following are used for dynamic protocols (rtpdec_*.c/rdt.c) */
