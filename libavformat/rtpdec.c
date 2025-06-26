@@ -694,13 +694,35 @@ static int rtp_set_prft(RTPDemuxContext *s, AVPacket *pkt, uint32_t timestamp)
  */
 static void finalize_packet(RTPDemuxContext *s, AVPacket *pkt, uint32_t timestamp)
 {
+    uint64_t last_rtcp_ntp_time;
+
     if (pkt->pts != AV_NOPTS_VALUE || pkt->dts != AV_NOPTS_VALUE)
         return; /* Timestamp already set by depacketizer */
     if (timestamp == RTP_NOTS_VALUE)
         return;
 
+    // Sporfie: check sanity of NTP time
+    last_rtcp_ntp_time = s->last_rtcp_ntp_time;
+    if (last_rtcp_ntp_time != AV_NOPTS_VALUE)
+    {
+        int64_t rtcp_time, current_time, diff;
+        rtcp_time = ff_parse_ntp_time(last_rtcp_ntp_time) - NTP_OFFSET_US;
+        current_time = av_gettime();
+        diff = FFABS(current_time - rtcp_time);
+
+        // If the last RTCP NTP time is way off (more than 24h difference with current time), don't use it.
+        // This is to filter out some cameras that sometimes send a wrong NTP time
+        if (diff > (int64_t)24 * (int64_t)3600 * (int64_t)AV_TIME_BASE)
+        {
+            av_log(s->ic, AV_LOG_WARNING,
+                   "RTP: Invalid NTP time %llu, current time %lld (diff %lld)\n",
+                   (unsigned long long)rtcp_time, (long long)current_time, (long long)diff);
+            last_rtcp_ntp_time = AV_NOPTS_VALUE;
+        }
+    }
+
     // Sporfie: added disabling parameter
-    if (s->last_rtcp_ntp_time != AV_NOPTS_VALUE && !s->disable_prt)
+    if (last_rtcp_ntp_time != AV_NOPTS_VALUE && !s->disable_prt)
     {
         if (rtp_set_prft(s, pkt, timestamp) < 0)
         {
@@ -709,7 +731,7 @@ static void finalize_packet(RTPDemuxContext *s, AVPacket *pkt, uint32_t timestam
     }
 
     // Sporfie: added disabling parameter
-    if (s->last_rtcp_ntp_time != AV_NOPTS_VALUE && s->ic->nb_streams > 1 && !s->disable_ntp_sync)
+    if (last_rtcp_ntp_time != AV_NOPTS_VALUE && s->ic->nb_streams > 1 && !s->disable_ntp_sync)
     {
         int64_t addend;
         int delta_timestamp;
