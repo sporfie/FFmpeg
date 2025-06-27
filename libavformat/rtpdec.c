@@ -710,9 +710,9 @@ static void finalize_packet(RTPDemuxContext *s, AVPacket *pkt, uint32_t timestam
         current_time = av_gettime();
         diff = FFABS(current_time - rtcp_time);
 
-        // If the last RTCP NTP time is way off (more than 24h difference with current time), don't use it.
+        // If the last RTCP NTP time is off (more than 1mn difference with current time), don't use it.
         // This is to filter out some cameras that sometimes send a wrong NTP time
-        if (diff > (int64_t)24 * (int64_t)3600 * (int64_t)AV_TIME_BASE)
+        if (diff > (int64_t)60 * (int64_t)AV_TIME_BASE)
         {
             av_log(s->ic, AV_LOG_WARNING,
                    "RTP: Invalid NTP time %llu, current time %lld (diff %lld)\n",
