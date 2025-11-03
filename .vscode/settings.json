@@ -4,6 +4,9 @@
     "time.h": "c",
     "mem_internal.h": "c",
     "refstruct.h": "c",
-    "avstring.h": "c"
+    "avstring.h": "c",
+    "h264.h": "c",
+    "cbs_sei.h": "c",
+    "h264_levels.h": "c"
   }
 }

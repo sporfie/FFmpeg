@@ -28,8 +28,9 @@
 #include "bsf_internal.h"
 #include "cbs.h"
 #include "cbs_bsf.h"
-#include "cbs_h264.h"
+#include "cbs_h265.h"
 #include "cbs_sei.h"
+// #include "h264.h"
 #include "h2645data.h"
 #include "sei.h"
 
@@ -47,31 +48,31 @@
 #define MAX_FILTER_CONTEXTS 10
 static uint8_t sporfie_abstimecode_uuid[16] = {0x73, 0x70, 0x6F, 0x72, 0x66, 0x69, 0x65, 0x5F, 0x61, 0x62, 0x73, 0x74, 0x69, 0x6D, 0x65, 0x5F};
 
-typedef struct H264AbsTimeCodeFilterContext
+typedef struct H265AbsTimeCodeFilterContext
 {
     AVBSFContext *bsf;
     int64_t first_abs_time;
     int64_t first_pts;
-} H264AbsTimeCodeFilterContext;
+} H265AbsTimeCodeFilterContext;
 
-typedef struct H264AbsTimeCodeContext
+typedef struct H265AbsTimeCodeContext
 {
     CBSBSFContext common;
     uint64_t frames;
     uint64_t offset;
-    H264AbsTimeCodeFilterContext filter_ctx[MAX_FILTER_CONTEXTS];
-} H264AbsTimeCodeContext;
+    H265AbsTimeCodeFilterContext filter_ctx[MAX_FILTER_CONTEXTS];
+} H265AbsTimeCodeContext;
 
-typedef struct H264AbsTimeCodeData
+typedef struct H265AbsTimeCodeData
 {
     SEIRawUserDataUnregistered udu;
     int64_t abs_time;
-} H264AbsTimeCodeData;
+} H265AbsTimeCodeData;
 
-static H264AbsTimeCodeFilterContext *context_for_stream(AVBSFContext *bsf)
+static H265AbsTimeCodeFilterContext *context_for_stream(AVBSFContext *bsf)
 {
-    H264AbsTimeCodeContext *ctx = bsf->priv_data;
-    H264AbsTimeCodeFilterContext *filter_ctx = NULL;
+    H265AbsTimeCodeContext *ctx = bsf->priv_data;
+    H265AbsTimeCodeFilterContext *filter_ctx = NULL;
 
     for (int i = 0; i < MAX_FILTER_CONTEXTS; i++)
     {
@@ -96,11 +97,11 @@ static H264AbsTimeCodeFilterContext *context_for_stream(AVBSFContext *bsf)
     return NULL;
 }
 
-static int h264_abstimecode_update_fragment(AVBSFContext *bsf, AVPacket *pkt, CodedBitstreamFragment *au)
+static int h265_abstimecode_update_fragment(AVBSFContext *bsf, AVPacket *pkt, CodedBitstreamFragment *au)
 {
-    H264AbsTimeCodeContext *ctx = bsf->priv_data;
-    H264AbsTimeCodeData *tcd = NULL;
-    H264AbsTimeCodeFilterContext *filter_ctx = NULL;
+    H265AbsTimeCodeContext *ctx = bsf->priv_data;
+    H265AbsTimeCodeData *tcd = NULL;
+    H265AbsTimeCodeFilterContext *filter_ctx = NULL;
     AVProducerReferenceTime *prft = NULL;
     int64_t pts_us, abs_time = 0;
     int err, isKey, insert;
@@ -126,7 +127,7 @@ static int h264_abstimecode_update_fragment(AVBSFContext *bsf, AVPacket *pkt, Co
         return AVERROR(ENOMEM);
     }
 
-    tcd = ff_refstruct_allocz(sizeof(H264AbsTimeCodeData));
+    tcd = ff_refstruct_allocz(sizeof(H265AbsTimeCodeData));
     if (!tcd)
     {
         av_log(bsf, AV_LOG_ERROR, "Failed to allocate memory for user data SEI message.\n");
@@ -178,46 +179,46 @@ static int h264_abstimecode_update_fragment(AVBSFContext *bsf, AVPacket *pkt, Co
     return 0;
 }
 
-static const CBSBSFType h264_abstimecode_type = {
-    .codec_id = AV_CODEC_ID_H264,
+static const CBSBSFType h265_abstimecode_type = {
+    .codec_id = AV_CODEC_ID_H265,
     .fragment_name = "access unit",
     .unit_name = "NAL unit",
-    .update_fragment = &h264_abstimecode_update_fragment,
+    .update_fragment = &h265_abstimecode_update_fragment,
 };
 
-static int h264_abstimecode_init(AVBSFContext *bsf)
+static int h265_abstimecode_init(AVBSFContext *bsf)
 {
-    H264AbsTimeCodeContext *ctx = bsf->priv_data;
+    H265AbsTimeCodeContext *ctx = bsf->priv_data;
     ctx->frames = 0;
     memset(ctx->filter_ctx, 0, sizeof(ctx->filter_ctx));
-    return ff_cbs_bsf_generic_init(bsf, &h264_abstimecode_type);
+    return ff_cbs_bsf_generic_init(bsf, &h265_abstimecode_type);
 }
 
-#define OFFSET(x) offsetof(H264AbsTimeCodeContext, x)
+#define OFFSET(x) offsetof(H265AbsTimeCodeContext, x)
 #define FLAGS (AV_OPT_FLAG_VIDEO_PARAM | AV_OPT_FLAG_BSF_PARAM)
-static const AVOption h264_abstimecode_options[] = {
+static const AVOption h265_abstimecode_options[] = {
     {"frames", "Which frames to insert timecode into (0=key frames, 1=all)", OFFSET(frames), AV_OPT_TYPE_UINT64, {.i64 = 0}, 0, 1, .flags = FLAGS},
     {"offset", "Offset from actual time in microseconds", OFFSET(offset), AV_OPT_TYPE_UINT64, {.i64 = 0}, -60000000, 60000000, .flags = FLAGS},
     {NULL}};
 
-static const AVClass h264_abstimecode_class = {
-    .class_name = "h264_abstimecode_bsf",
+static const AVClass h265_abstimecode_class = {
+    .class_name = "h265_abstimecode_bsf",
     .item_name = av_default_item_name,
-    .option = h264_abstimecode_options,
+    .option = h265_abstimecode_options,
     .version = LIBAVUTIL_VERSION_INT,
 };
 
-static const enum AVCodecID h264_abstimecode_codec_ids[] = {
-    AV_CODEC_ID_H264,
+static const enum AVCodecID h265_abstimecode_codec_ids[] = {
+    AV_CODEC_ID_H265,
     AV_CODEC_ID_NONE,
 };
 
-const FFBitStreamFilter ff_h264_abstimecode_bsf = {
-    .p.name = "h264_abstimecode",
-    .p.codec_ids = h264_abstimecode_codec_ids,
-    .p.priv_class = &h264_abstimecode_class,
-    .priv_data_size = sizeof(H264AbsTimeCodeContext),
-    .init = &h264_abstimecode_init,
+const FFBitStreamFilter ff_h265_abstimecode_bsf = {
+    .p.name = "h265_abstimecode",
+    .p.codec_ids = h265_abstimecode_codec_ids,
+    .p.priv_class = &h265_abstimecode_class,
+    .priv_data_size = sizeof(H265AbsTimeCodeContext),
+    .init = &h265_abstimecode_init,
     .close = &ff_cbs_bsf_generic_close,
     .filter = &ff_cbs_bsf_generic_filter,
 };

@@ -40,6 +40,7 @@ extern const FFBitStreamFilter ff_extract_extradata_bsf;
 extern const FFBitStreamFilter ff_filter_units_bsf;
 extern const FFBitStreamFilter ff_h264_metadata_bsf;
 extern const FFBitStreamFilter ff_h264_abstimecode_bsf;
+extern const FFBitStreamFilter ff_h265_abstimecode_bsf;
 extern const FFBitStreamFilter ff_h264_mp4toannexb_bsf;
 extern const FFBitStreamFilter ff_h264_redundant_pps_bsf;
 extern const FFBitStreamFilter ff_hapqa_extract_bsf;
@@ -75,10 +76,11 @@ extern const FFBitStreamFilter ff_vvc_mp4toannexb_bsf;
 
 const AVBitStreamFilter *av_bsf_iterate(void **opaque)
 {
-    uintptr_t i = (uintptr_t) * opaque;
+    uintptr_t i = (uintptr_t)*opaque;
     const FFBitStreamFilter *f = bitstream_filters[i];
 
-    if (f) {
+    if (f)
+    {
         *opaque = (void *)(i + 1);
         return &f->p;
     }
@@ -93,7 +95,8 @@ const AVBitStreamFilter *av_bsf_get_by_name(const char *name)
     if (!name)
         return NULL;
 
-    while ((f = av_bsf_iterate(&i))) {
+    while ((f = av_bsf_iterate(&i)))
+    {
         if (!strcmp(f->name, name))
             return f;
     }
@@ -106,7 +109,8 @@ const AVClass *ff_bsf_child_class_iterate(void **opaque)
     const AVBitStreamFilter *f;
 
     /* find next filter with priv options */
-    while ((f = av_bsf_iterate(opaque))) {
+    while ((f = av_bsf_iterate(opaque)))
+    {
         if (f->priv_class)
             return f->priv_class;
     }
