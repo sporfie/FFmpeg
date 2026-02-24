@@ -144,7 +144,7 @@ static int h264_abstimecode_update_fragment(AVBSFContext *bsf, AVPacket *pkt, Co
     if (prft)
     {
         abs_time = prft->wallclock;
-        av_log(bsf, AV_LOG_TRACE, "From RTSP: pts %lld, epoch %lld, base: %lld\n", pts_us, abs_time, abs_time - pts_us);
+        av_log(bsf, AV_LOG_DEBUG, "From RTSP: pts %lld, epoch %lld, base: %lld, host time: %lld\n", pts_us, abs_time, abs_time - pts_us, av_gettime());
     }
 
     // Otherwise figure it out ourselves

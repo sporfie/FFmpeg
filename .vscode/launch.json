@@ -215,7 +215,7 @@
       "args": [
         "-nostats",
         "-loglevel",
-        "info",
+        "debug",
         "-y",
         "-i",
         "rtsp://localhost:8554/stream",
