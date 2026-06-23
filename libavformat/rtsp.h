@@ -416,6 +416,16 @@ typedef struct RTSPState {
      */
     char *user_agent;
 
+    /**
+     * Sporfie: Disable the insertion of the Producer Reference Time in the packet metadata
+     */
+    int disable_prt;
+
+    /**
+     * Sporfie: Disable the use of NTP time to compute the RTP timestamp
+     */
+    int disable_ntp_sync;
+
     char default_lang[4];
     int buffer_size;
     int pkt_size;

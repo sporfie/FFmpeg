@@ -562,7 +562,8 @@ static int opus_write_extradata(AVCodecParameters *codecpar)
  * MPEG-2 TS streams.
  */
 RTPDemuxContext *ff_rtp_parse_open(AVFormatContext *s1, AVStream *st,
-                                   int payload_type, int queue_size)
+                                   int payload_type, int queue_size,
+                                   int disable_prt, int disable_ntp_sync)
 {
     RTPDemuxContext *s;
     int ret;
@@ -576,6 +577,8 @@ RTPDemuxContext *ff_rtp_parse_open(AVFormatContext *s1, AVStream *st,
     s->ic                  = s1;
     s->st                  = st;
     s->queue_size          = queue_size;
+    s->disable_prt         = disable_prt;
+    s->disable_ntp_sync    = disable_ntp_sync;
 
     av_log(s->ic, AV_LOG_VERBOSE, "setting jitter buffer size to %d\n",
            s->queue_size);
@@ -622,18 +625,64 @@ void ff_rtp_parse_set_crypto(RTPDemuxContext *s, const char *suite,
         s->srtp_enabled = 1;
 }
 
+static int rtp_set_prft(RTPDemuxContext *s, AVPacket *pkt, uint32_t timestamp)
+{
+    int64_t rtcp_time, delta_timestamp, delta_time;
+
+    AVProducerReferenceTime *prft =
+        (AVProducerReferenceTime *)av_packet_new_side_data(
+            pkt, AV_PKT_DATA_PRFT, sizeof(AVProducerReferenceTime));
+    if (!prft)
+        return AVERROR(ENOMEM);
+
+    rtcp_time = ff_parse_ntp_time(s->last_rtcp_ntp_time) - NTP_OFFSET_US;
+    delta_timestamp = (int64_t)timestamp - (int64_t)s->last_rtcp_timestamp;
+    delta_time = av_rescale_q(delta_timestamp, s->st->time_base, AV_TIME_BASE_Q);
+
+    prft->wallclock = rtcp_time + delta_time;
+    prft->flags = 24;
+    return 0;
+}
+
 /**
  * This was the second switch in rtp_parse packet.
  * Normalizes time, if required, sets stream_index, etc.
  */
 static void finalize_packet(RTPDemuxContext *s, AVPacket *pkt, uint32_t timestamp)
 {
+    uint64_t last_rtcp_ntp_time;
+
     if (pkt->pts != AV_NOPTS_VALUE || pkt->dts != AV_NOPTS_VALUE)
         return; /* Timestamp already set by depacketizer */
     if (timestamp == RTP_NOTS_VALUE)
         return;
 
-    if (s->last_rtcp_ntp_time != AV_NOPTS_VALUE && s->ic->nb_streams > 1) {
+    // Sporfie: check sanity of NTP time
+    last_rtcp_ntp_time = s->last_rtcp_ntp_time;
+    if (last_rtcp_ntp_time != AV_NOPTS_VALUE) {
+        int64_t rtcp_time, current_time, diff;
+        rtcp_time = ff_parse_ntp_time(last_rtcp_ntp_time) - NTP_OFFSET_US;
+        current_time = av_gettime();
+        diff = FFABS(current_time - rtcp_time);
+
+        // If the last RTCP NTP time is off (more than 1mn difference with current time), don't use it.
+        // This is to filter out some cameras that sometimes send a wrong NTP time
+        if (diff > (int64_t)60 * (int64_t)AV_TIME_BASE) {
+            av_log(s->ic, AV_LOG_WARNING,
+                   "RTP: Invalid NTP time %llu, current time %lld (diff %lld)\n",
+                   (unsigned long long)rtcp_time, (long long)current_time, (long long)diff);
+            last_rtcp_ntp_time = AV_NOPTS_VALUE;
+        }
+    }
+
+    // Sporfie: added disabling parameter
+    if (last_rtcp_ntp_time != AV_NOPTS_VALUE && !s->disable_prt) {
+        if (rtp_set_prft(s, pkt, timestamp) < 0)
+            av_log(s->ic, AV_LOG_WARNING, "rtpdec: failed to set prft\n");
+    }
+
+    // Sporfie: added disabling parameter
+    if (last_rtcp_ntp_time != AV_NOPTS_VALUE && s->ic->nb_streams > 1 && !s->disable_ntp_sync) {
         int64_t addend;
         int delta_timestamp;
 

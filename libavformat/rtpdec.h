@@ -41,7 +41,8 @@ typedef struct RTPDynamicProtocolHandler RTPDynamicProtocolHandler;
 
 typedef struct RTPDemuxContext RTPDemuxContext;
 RTPDemuxContext *ff_rtp_parse_open(AVFormatContext *s1, AVStream *st,
-                                   int payload_type, int queue_size);
+                                   int payload_type, int queue_size,
+                                   int disable_prt, int disable_ntp_sync);
 void ff_rtp_parse_set_dynamic_protocol(RTPDemuxContext *s, PayloadContext *ctx,
                                        const RTPDynamicProtocolHandler *handler);
 void ff_rtp_parse_set_crypto(RTPDemuxContext *s, const char *suite,
@@ -160,6 +161,10 @@ struct RTPDemuxContext {
 
     int srtp_enabled;
     struct SRTPContext srtp;
+
+    // Sporfie
+    int disable_prt;      // Do not insert Producer Reference Time in packet metadata
+    int disable_ntp_sync; // Do not use NTP time to compute the RTP timestamp
 
     /** Statistics for this stream (used by RTCP receiver reports) */
     RTPStatistics statistics;

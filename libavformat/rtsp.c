@@ -74,7 +74,9 @@
 #define COMMON_OPTS() \
     { "reorder_queue_size", "set number of packets to buffer for handling of reordered packets", OFFSET(reordering_queue_size), AV_OPT_TYPE_INT, { .i64 = -1 }, -1, INT_MAX, DEC }, \
     { "buffer_size",        "Underlying protocol send/receive buffer size",                  OFFSET(buffer_size),           AV_OPT_TYPE_INT, { .i64 = -1 }, -1, INT_MAX, DEC|ENC }, \
-    { "pkt_size",           "Underlying protocol send packet size",                          OFFSET(pkt_size),              AV_OPT_TYPE_INT, { .i64 = -1 }, -1, INT_MAX, ENC } \
+    { "pkt_size",           "Underlying protocol send packet size",                          OFFSET(pkt_size),              AV_OPT_TYPE_INT, { .i64 = -1 }, -1, INT_MAX, ENC }, \
+    { "disable_prt",        "disable Producer Reference Time in RTP packets",                OFFSET(disable_prt),           AV_OPT_TYPE_BOOL, { .i64 = 0 }, 0, 1, DEC }, \
+    { "disable_ntp_sync",   "disable use of NTP time to compute PTS",                         OFFSET(disable_ntp_sync),      AV_OPT_TYPE_BOOL, { .i64 = 0 }, 0, 1, DEC } \
 
 
 const AVOption ff_rtsp_options[] = {
@@ -862,7 +864,9 @@ int ff_rtsp_open_transport_ctx(AVFormatContext *s, RTSPStream *rtsp_st)
     else if (CONFIG_RTPDEC)
         rtsp_st->transport_priv = ff_rtp_parse_open(s, st,
                                          rtsp_st->sdp_payload_type,
-                                         reordering_queue_size);
+                                         reordering_queue_size,
+                                         rt->disable_prt,
+                                         rt->disable_ntp_sync);
 
     if (!rtsp_st->transport_priv) {
          return AVERROR(ENOMEM);
