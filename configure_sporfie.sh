@@ -1,1 +1,1 @@
-./configure --enable-libsrt --enable-libfreetype --enable-fontconfig --enable-gpl --enable-nonfree --enable-filter=drawtext --enable-libharfbuzz --disable-bzlib --enable-libx264
+./configure --enable-libsrt --enable-libfreetype --enable-fontconfig --enable-gpl --enable-nonfree --enable-filter=drawtext --enable-libharfbuzz --disable-bzlib
