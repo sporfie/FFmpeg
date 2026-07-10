@@ -135,7 +135,7 @@ static int h265_abstimecode_update_fragment(AVBSFContext *bsf, AVPacket *pkt, Co
     tcd->udu.data = (uint8_t *)&(tcd->abs_time);
     tcd->udu.data_length = sizeof(int64_t);
 
-    pts_us = av_rescale_q(pkt->pts, bsf->time_base_in, AV_TIME_BASE_Q);
+    pts_us = av_rescale_q(pkt->pts, bsf->time_base_out, AV_TIME_BASE_Q);
 
     // Look for the absolute time in the side data, the RTSP source will put it there if available.
     prft = (AVProducerReferenceTime *)av_packet_get_side_data(pkt, AV_PKT_DATA_PRFT, NULL);
@@ -159,7 +159,7 @@ static int h265_abstimecode_update_fragment(AVBSFContext *bsf, AVPacket *pkt, Co
             filter_ctx->first_pts = pkt->pts;
             av_log(bsf, AV_LOG_INFO, "First frame pts %lld, epoch %lld\n", (long long)pts_us, (long long)filter_ctx->first_abs_time);
         }
-        rel_pts_us = av_rescale_q(pkt->pts - filter_ctx->first_pts, bsf->time_base_in, AV_TIME_BASE_Q);
+        rel_pts_us = av_rescale_q(pkt->pts - filter_ctx->first_pts, bsf->time_base_out, AV_TIME_BASE_Q);
         abs_time = filter_ctx->first_abs_time + rel_pts_us;
     }
     tcd->abs_time = htonll(abs_time);
