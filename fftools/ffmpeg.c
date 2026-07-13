@@ -3059,6 +3059,15 @@ static int check_init_output_file(OutputFile *of, int file_index)
         if (!av_fifo_size(ost->muxing_queue))
             ost->mux_timebase = ost->st->time_base;
 
+        /* The muxer may have rewritten st->time_base during write_header
+         * (e.g. mov/mp4 rescales the video timescale up to >= 10000). The
+         * output bitstream filter's time_base_in was captured before that in
+         * init_output_bsfs and is now stale, while packets reaching the bsf
+         * are rescaled into mux_timebase. Re-sync it so filters interpreting
+         * pkt->pts (such as h264/h265_abstimecode) use the correct units. */
+        if (ost->bsf_ctx)
+            ost->bsf_ctx->time_base_in = ost->mux_timebase;
+
         while (av_fifo_size(ost->muxing_queue)) {
             AVPacket *pkt;
             av_fifo_generic_read(ost->muxing_queue, &pkt, sizeof(pkt), NULL);
