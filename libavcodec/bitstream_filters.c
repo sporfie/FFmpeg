@@ -35,6 +35,8 @@ extern const FFBitStreamFilter ff_dv_error_marker_bsf;
 extern const FFBitStreamFilter ff_eac3_core_bsf;
 extern const FFBitStreamFilter ff_extract_extradata_bsf;
 extern const FFBitStreamFilter ff_filter_units_bsf;
+extern const FFBitStreamFilter ff_h264_abstimecode_bsf;
+extern const FFBitStreamFilter ff_h265_abstimecode_bsf;
 extern const FFBitStreamFilter ff_h264_metadata_bsf;
 extern const FFBitStreamFilter ff_h264_mp4toannexb_bsf;
 extern const FFBitStreamFilter ff_h264_redundant_pps_bsf;

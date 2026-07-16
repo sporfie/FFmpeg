@@ -1,0 +1,1 @@
+./configure --disable-asm --enable-nonfree --enable-libndi_newtek --extra-libs="-lpthread -lm" --enable-vaapi --enable-libmfx --enable-hwaccel=qsv --enable-libsrt --extra-cflags="-I../ndi/include" --extra-ldflags="-L../ndi/lib/x86_64-linux-gnu"
