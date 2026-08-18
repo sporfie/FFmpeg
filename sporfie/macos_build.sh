@@ -24,3 +24,7 @@ export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig:/opt/homebrew/opt/openssl@3/
   --extra-cflags="$CPPFLAGS" \
   --extra-ldflags="$LDFLAGS"
   
+make -j$(nproc)
+
+install_name_tool -add_rpath /usr/lib /Users/guy/Development/Sporfie/ffmpeg_sporfie/ffmpeg
+install_name_tool -add_rpath /usr/lib /Users/guy/Development/Sporfie/ffmpeg_sporfie/ffprobe
