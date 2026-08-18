@@ -35,6 +35,10 @@
  * (auto-inserted if needed) which knows the colorspace of its target link.
  */
 
+/* needed for struct stat's nanosecond resolution mtime, see img2dec.c */
+#define _DEFAULT_SOURCE
+#define _BSD_SOURCE
+
 #include <errno.h>
 #include <time.h>
 #include <sys/stat.h>

@@ -29316,7 +29316,7 @@ This source supports the following command:
 @item reload
 Reload the file immediately, without waiting for the next check and without
 comparing modification times. Useful to force an update from a controlling
-process, through the @ref{zmq} or @ref{sendcmd} filters, when the timestamps
+process, through the @command{zmq} or @command{sendcmd} filters, when the timestamps
 of the file cannot be relied upon.
 @end table
 
