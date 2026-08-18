@@ -29255,6 +29255,115 @@ and frame rate 10 which is overlaid on the overlay filter main input:
 frei0r_src=size=200x200:framerate=10:filter_name=partik0l:filter_params=1234 [overlay]; [in][overlay] overlay
 @end example
 
+@section imgwatch
+
+Read a still image and keep watching it on disk, reloading it whenever it
+changes, without interrupting the filter graph.
+
+The image is decoded when the graph is built. A background thread then checks
+the modification time of the file at a regular interval and, when it changed,
+decodes the file again and hands the result over to the graph, so an overlay
+can be replaced while an encoding session is running.
+
+Decoding happens on that background thread, so a reload never stalls the
+pipeline. If the file cannot be read or decoded, the image currently being
+served is kept and a warning is logged; the writer should therefore create the
+new image under a temporary name and @command{rename()} it over the watched
+path, which makes a replacement atomic.
+
+If the file disappears, a fully transparent image is served instead, until the
+file comes back. Deleting the watched file is therefore a way to remove the
+overlay from a running pipeline. Note that the file must exist when the graph is
+built, since that is where the size of the output link comes from.
+
+The output is always a packed RGB format with an alpha channel. Conversion to
+whatever the rest of the graph needs is left to the surrounding filters, so a
+reload can never change the negotiated properties of the output link. If a
+reloaded file has a different size than the one read at configuration time, it
+is rescaled to the configured size and a warning is logged.
+
+This source never ends. Combined with @ref{overlay} that means the graph does
+not terminate when the main input does, so use @code{overlay=shortest=1} (or
+the @code{-shortest} output option) to end the encoding with the main input.
+
+This source accepts the following options:
+
+@table @option
+@item filename, f
+Set the image file to read and watch. Any still image format supported by the
+build can be used, not just PNG.
+
+@item rate, r
+Set the output frame rate, as a number or as a frame rate abbreviation.
+Default is @code{10}.
+
+This is not a decoding cost: the same decoded image is handed out repeatedly
+until a reload replaces it. It is the granularity at which a new image can
+enter the graph, so it bounds how quickly a change becomes visible.
+
+@item poll
+Set the delay between two checks of the modification time of the file. Default
+is @code{1} second, minimum is 10 milliseconds.
+
+Only the metadata of the file is read to detect a change, never its contents.
+@end table
+
+@subsection Commands
+
+This source supports the following command:
+
+@table @option
+@item reload
+Reload the file immediately, without waiting for the next check and without
+comparing modification times. Useful to force an update from a controlling
+process, through the @ref{zmq} or @ref{sendcmd} filters, when the timestamps
+of the file cannot be relied upon.
+@end table
+
+@subsection Examples
+
+@itemize
+@item
+Burn a live-updating overlay onto a video:
+@example
+ffmpeg -i input.mp4 -filter_complex \
+  "imgwatch=filename=/tmp/scoreboard.png[ovl];[0:v][ovl]overlay=shortest=1" \
+  output.mp4
+@end example
+
+Writing a new @file{/tmp/scoreboard.png} replaces the overlay within about a
+second, while the encoding keeps running.
+
+@item
+Check the file 5 times per second and let a new image appear as quickly as
+possible:
+@example
+imgwatch=filename=/tmp/ovl.png:poll=0.2:rate=25
+@end example
+
+@item
+Feed a hardware encoder. The source produces regular software frames, so it
+composes with the usual conversion and upload filters:
+@example
+ffmpeg -i input.mp4 -filter_complex \
+  "imgwatch=f=/tmp/ovl.png[ovl];[0:v][ovl]overlay=shortest=1,format=nv12" \
+  -c:v h264_videotoolbox output.mp4
+@end example
+
+@item
+Same on a fully GPU-based CUDA pipeline, where the overlay has to be uploaded
+to the device:
+@example
+ffmpeg -hwaccel cuda -hwaccel_output_format cuda -i input.mp4 -filter_complex \
+  "imgwatch=f=/tmp/ovl.png,format=yuva420p,hwupload_cuda[ovl];\
+   [0:v][ovl]overlay_cuda=shortest=1" \
+  -c:v h264_nvenc output.mp4
+@end example
+
+Each reload is uploaded to the device by @ref{hwupload_cuda} like any other
+frame.
+@end itemize
+
 @section life
 
 Generate a life pattern.

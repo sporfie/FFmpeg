@@ -598,6 +598,7 @@ OBJS-$(CONFIG_DDAGRAB_FILTER)                += vsrc_ddagrab.o
 OBJS-$(CONFIG_FREI0R_SRC_FILTER)             += vf_frei0r.o
 OBJS-$(CONFIG_GRADIENTS_FILTER)              += vsrc_gradients.o
 OBJS-$(CONFIG_HALDCLUTSRC_FILTER)            += vsrc_testsrc.o
+OBJS-$(CONFIG_IMGWATCH_FILTER)               += vsrc_imgwatch.o
 OBJS-$(CONFIG_LIFE_FILTER)                   += vsrc_life.o
 OBJS-$(CONFIG_MANDELBROT_FILTER)             += vsrc_mandelbrot.o
 OBJS-$(CONFIG_MPTESTSRC_FILTER)              += vsrc_mptestsrc.o

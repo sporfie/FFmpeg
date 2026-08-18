@@ -563,6 +563,7 @@ extern const AVFilter ff_vsrc_ddagrab;
 extern const AVFilter ff_vsrc_frei0r_src;
 extern const AVFilter ff_vsrc_gradients;
 extern const AVFilter ff_vsrc_haldclutsrc;
+extern const AVFilter ff_vsrc_imgwatch;
 extern const AVFilter ff_vsrc_life;
 extern const AVFilter ff_vsrc_mandelbrot;
 extern const AVFilter ff_vsrc_mptestsrc;
