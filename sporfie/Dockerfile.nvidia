@@ -27,8 +27,14 @@ ENV	    NVIDIA_DRIVER_CAPABILITIES=compute,utility,video
 ENV	    DEBIAN_FRONTEND=noninteractive
 WORKDIR     /tmp/workdir
 
+## The last six are the same libraries the release image takes from Ubuntu rather than from this build
+## (see the runtime stage below). They are here so that the check at the end of the build — running the
+## staged ffmpeg against the staged libraries alone — runs against the set the release image will have,
+## and so fails here, in the build, if a soname ever stops matching. Only the libraries: the headers and
+## the .pc files still come from this build, which is what every ./configure below is pointed at.
 RUN     apt-get -yqq update && \
-        apt-get install -yq --no-install-recommends ca-certificates expat libgomp1 python3 && \
+        apt-get install -yq --no-install-recommends ca-certificates expat libgomp1 python3 \
+                libfontconfig1 libfreetype6 libfribidi0 libpng16-16 libwebp7 libxml2 && \
         apt-get autoremove -y && \
         apt-get clean -y
 
@@ -38,8 +44,17 @@ ENV	    NVIDIA_DRIVER_CAPABILITIES=compute,utility,video
 ENV	    DEBIAN_FRONTEND=noninteractive
 WORKDIR     /tmp/workdir
 
+## The last six are libraries the build stage below also builds from source, and that Ubuntu ships too:
+## fontconfig, freetype, fribidi, libpng, libwebp and libxml2. ffmpeg asks for them by soname and runs on
+## either, so the image takes the distribution's, which are the newer ones, and the build's copies stay in
+## the build stage. They used to be copied in alongside ffmpeg, where — /usr/local/lib being on the
+## loader's path — they served every process in every image built on this one, not just ffmpeg: an image
+## adding a browser got fontconfig 2.12.4 and fribidi 0.19.7 under it, which broke the fontconfig package's
+## own fc-cache and left libpango without a symbol. Keep this list in step with the one the staging step
+## excludes, further down.
 RUN     apt-get -yqq update && \
-        apt-get install -yq --no-install-recommends ca-certificates expat libgomp1 libxcb-shape0-dev && \
+        apt-get install -yq --no-install-recommends ca-certificates expat libgomp1 libxcb-shape0-dev \
+                libfontconfig1 libfreetype6 libfribidi0 libpng16-16 libwebp7 libxml2 && \
         apt-get autoremove -y && \
         apt-get clean -y
 
@@ -686,11 +701,18 @@ RUN  \
         make -j"$(nproc)" qt-faststart && cp qt-faststart ${PREFIX}/bin/
 
 ## cleanup
+## Everything the release stage copies is staged here, so only what it needs is put here: the libraries
+## ffmpeg links and the distribution does not ship, ffmpeg's own binaries, and ffmpeg's own data. Not the
+## six libraries listed with the runtime packages above, not the thirty-odd tools the dependency builds
+## leave in ${PREFIX}/bin — aomenc, cwebp, the fc-* family, xmllint, the srt utilities — which would also
+## sit ahead of the distribution's namesakes on PATH, and not the 14M of documentation, man pages and
+## autoconf macros that the same builds leave in ${PREFIX}/share.
 RUN \
-        LD_LIBRARY_PATH="${PREFIX}/lib:${PREFIX}/lib64:${LD_LIBRARY_PATH}" ldd ${PREFIX}/bin/ffmpeg | grep opt/ffmpeg | cut -d ' ' -f 3 | xargs -i cp {} /usr/local/lib/ && \
+        LD_LIBRARY_PATH="${PREFIX}/lib:${PREFIX}/lib64:${LD_LIBRARY_PATH}" ldd ${PREFIX}/bin/ffmpeg | grep opt/ffmpeg | cut -d ' ' -f 3 | \
+          grep -vE '/lib(fontconfig|freetype|fribidi|png16|webp|xml2)\.so\.' | xargs -i cp {} /usr/local/lib/ && \
         for lib in /usr/local/lib/*.so.*; do ln -s "${lib##*/}" "${lib%%.so.*}".so; done && \
-        cp ${PREFIX}/bin/* /usr/local/bin/ && \
-        cp -r ${PREFIX}/share/* /usr/local/share/ && \
+        cp ${PREFIX}/bin/ffmpeg ${PREFIX}/bin/ffprobe ${PREFIX}/bin/qt-faststart ${PREFIX}/bin/zmqsend /usr/local/bin/ && \
+        cp -r ${PREFIX}/share/ffmpeg /usr/local/share/ && \
         LD_LIBRARY_PATH=/usr/local/lib ffmpeg -buildconf && \
         LD_LIBRARY_PATH=/usr/local/lib ffmpeg -hide_banner -filters | grep -q imgwatch && \
         cp -r ${PREFIX}/include/libav* ${PREFIX}/include/libpostproc ${PREFIX}/include/libsw* /usr/local/include && \
@@ -712,12 +734,18 @@ ENV         LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64
 CMD         ["--help"]
 ENTRYPOINT  ["ffmpeg"]
 
-# copy only needed files, without copying nvidia dev files
+# The build stage staged these four for us and left out everything else it produced, so they carry
+# ffmpeg, ffprobe, qt-faststart and zmqsend, the libraries only this build provides, ffmpeg's presets and
+# ffmpeg's headers — no NVIDIA development files, and no second copy of a library Ubuntu ships.
 COPY --from=build /usr/local/bin /usr/local/bin/
 COPY --from=build /usr/local/share /usr/local/share/
 COPY --from=build /usr/local/lib /usr/local/lib/
 COPY --from=build /usr/local/include /usr/local/include/
 
-# Let's make sure the app built correctly, and that the Sporfie filters are in
+# Let's make sure the app built correctly, that the Sporfie filters are in, that every library ffmpeg
+# asks for is here — the six it now takes from Ubuntu rather than from the build included — and that it
+# still encodes through one of them, libpng.
 RUN         ffmpeg -buildconf && \
-            ffmpeg -hide_banner -filters | grep imgwatch
+            ffmpeg -hide_banner -filters | grep imgwatch && \
+            ! ldd /usr/local/bin/ffmpeg /usr/local/bin/ffprobe | grep 'not found' && \
+            ffmpeg -hide_banner -v error -f lavfi -i testsrc=s=64x64 -frames:v 1 -update 1 -y /tmp/probe.png
