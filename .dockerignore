@@ -1,0 +1,77 @@
+# Build context excludes for sporfie/Dockerfile.* - those images build FFmpeg
+# from these sources, so keep host build artifacts (and the 450+ MB of git
+# history) out of the context. Mirrors .gitignore, with the "**/" prefix that
+# .dockerignore needs to match at any depth.
+.git
+.github
+
+# configure / make output (configure regenerates all of it in the container)
+/.config
+/.version
+/config.h
+/config.asm
+/config_components.h
+/coverage.info
+/lcov
+/mapfile
+ffbuild/.config
+ffbuild/config.*
+libavutil/ffversion.h
+libavutil/avconfig.h
+**/*_list.c
+libavfilter/opencl/*.c
+doc/config.texi
+doc/avoptions_*.texi
+doc/fate.txt
+doc/print_options
+doc/examples/pc-uninstalled
+
+# object files, libraries and generated sources
+**/*.a
+**/*.o
+**/*.o.*
+**/*.d
+**/*.def
+**/*.dll
+**/*.dylib
+**/*.exe
+**/*.exp
+**/*.gcda
+**/*.gcno
+**/*.h.c
+**/*.ilk
+**/*.lib
+**/*.pdb
+**/*.so
+**/*.so.*
+**/*.swp
+**/*.ver
+**/*.version
+**/*.metal.air
+**/*.metallib
+**/*.metallib.c
+**/*.ptx
+**/*.ptx.c
+**/*.ptx.gz
+**/*.pc
+
+# built programs - root anchored: tests/ref/fate has tracked files ending in _g
+/ffmpeg
+/ffplay
+/ffprobe
+/ffmpeg_g
+/ffplay_g
+/ffprobe_g
+/tools/*_g
+
+# generated docs and test output
+doc/*.1
+doc/*.3
+doc/*.html
+doc/*.pod
+tests/data
+tools/python/__pycache__
+
+# editor / OS noise
+**/.DS_Store
+**/*~
