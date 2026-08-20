@@ -645,6 +645,14 @@ RUN \
 
 
 ## Build ffmpeg https://ffmpeg.org/
+##
+## --enable-cuda-nvcc compiles the CUDA kernels the *filters* need - scale_cuda, overlay_cuda,
+## yadif_cuda and the rest are skipped without it, however much of --enable-cuda/cuvid/nvenc is
+## on, because those only cover the codecs. nvcc comes with the cuda devel base image, so this
+## adds no package. It is on FFmpeg's nonfree list, which --enable-nonfree below already accepts
+## for libnpp and libfdk_aac. configure's default -gencode compute_30 is rejected by CUDA 12's
+## nvcc, which configure detects and falls back to compute_60; the kernels are emitted as PTX and
+## JIT-compiled by the driver at runtime, so Pascal and newer (T4, A10G, L4, ...) all run them.
 RUN  \
         DIR=/tmp/ffmpeg && cd ${DIR} && \
         ./configure \
@@ -653,6 +661,7 @@ RUN  \
         --disable-doc \
         --disable-ffplay \
         --enable-cuda \
+        --enable-cuda-nvcc \
         --enable-cuvid \
         --enable-fontconfig \
         --enable-gpl \
@@ -715,6 +724,8 @@ RUN \
         cp -r ${PREFIX}/share/ffmpeg /usr/local/share/ && \
         LD_LIBRARY_PATH=/usr/local/lib ffmpeg -buildconf && \
         LD_LIBRARY_PATH=/usr/local/lib ffmpeg -hide_banner -filters | grep -q imgwatch && \
+        LD_LIBRARY_PATH=/usr/local/lib ffmpeg -hide_banner -filters | grep -qE '\bscale_cuda\b' && \
+        LD_LIBRARY_PATH=/usr/local/lib ffmpeg -hide_banner -filters | grep -qE '\boverlay_cuda\b' && \
         cp -r ${PREFIX}/include/libav* ${PREFIX}/include/libpostproc ${PREFIX}/include/libsw* /usr/local/include && \
         mkdir -p /usr/local/lib/pkgconfig && \
         for pc in ${PREFIX}/lib/pkgconfig/libav*.pc ${PREFIX}/lib/pkgconfig/libpostproc.pc ${PREFIX}/lib/pkgconfig/libsw*.pc; do \
@@ -745,7 +756,11 @@ COPY --from=build /usr/local/include /usr/local/include/
 # Let's make sure the app built correctly, that the Sporfie filters are in, that every library ffmpeg
 # asks for is here — the six it now takes from Ubuntu rather than from the build included — and that it
 # still encodes through one of them, libpng.
+# The two CUDA filters are checked for presence only: docker build gets no GPU, so actually running one
+# has to be done against the finished image, with --gpus all.
 RUN         ffmpeg -buildconf && \
             ffmpeg -hide_banner -filters | grep imgwatch && \
+            ffmpeg -hide_banner -filters | grep -E '\bscale_cuda\b' && \
+            ffmpeg -hide_banner -filters | grep -E '\boverlay_cuda\b' && \
             ! ldd /usr/local/bin/ffmpeg /usr/local/bin/ffprobe | grep 'not found' && \
             ffmpeg -hide_banner -v error -f lavfi -i testsrc=s=64x64 -frames:v 1 -update 1 -y /tmp/probe.png
