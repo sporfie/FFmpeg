@@ -261,6 +261,17 @@ static int overlay_cuda_blend(FFFrameSync *fs)
         return ret;
     }
 
+    /* The frame is never writable here - framesync holds a reference of its own - so the call above
+     * always copies, and for hardware frames it takes the new frame from this link's pool with
+     * av_hwframe_get_buffer(), which sizes it after the pool rather than after the picture. Pools
+     * are not always an exact fit: scale_cuda allocates its 32-aligned, so a 1280x720 picture comes
+     * back as a 1280x736 frame. Restore the link's dimensions, which ff_filter_frame() asserts a
+     * frame carries and everything downstream reads: without this the encoder is handed the padded
+     * size, a later scale_cuda squeezes the extra rows into the picture, and main_w/main_h evaluate
+     * against them. */
+    input_main->width  = outlink->w;
+    input_main->height = outlink->h;
+
     // push cuda context
 
     ret = CHECK_CU(cu->cuCtxPushCurrent(cuda_ctx));
