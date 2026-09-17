@@ -58,7 +58,8 @@ typedef struct H264AbsTimeCodeContext
 {
     CBSBSFContext common;
     uint64_t frames;
-    uint64_t offset;
+    int64_t offset;
+    int64_t time;
     H264AbsTimeCodeFilterContext filter_ctx[MAX_FILTER_CONTEXTS];
 } H264AbsTimeCodeContext;
 
@@ -157,7 +158,10 @@ static int h264_abstimecode_update_fragment(AVBSFContext *bsf, AVPacket *pkt, Co
         // between the current frame and the first frame.
         if (filter_ctx->first_abs_time == 0)
         {
-            filter_ctx->first_abs_time = av_gettime() + ctx->offset;
+            if (ctx->time)
+                filter_ctx->first_abs_time = ctx->time;
+            else
+                filter_ctx->first_abs_time = av_gettime() + ctx->offset;
             filter_ctx->first_pts = pkt->pts;
             av_log(bsf, AV_LOG_INFO, "First frame pts %lld, epoch %lld\n", pts_us, filter_ctx->first_abs_time);
         }
@@ -190,6 +194,10 @@ static int h264_abstimecode_init(AVBSFContext *bsf)
     H264AbsTimeCodeContext *ctx = bsf->priv_data;
     ctx->frames = 0;
     memset(ctx->filter_ctx, 0, sizeof(ctx->filter_ctx));
+    if (ctx->time && ctx->offset) {
+        av_log(bsf, AV_LOG_ERROR, "Only one of 'time' or 'offset' options should be set\n");
+        return AVERROR(EINVAL);
+    }
     return ff_cbs_bsf_generic_init(bsf, &h264_abstimecode_type);
 }
 
@@ -197,7 +205,8 @@ static int h264_abstimecode_init(AVBSFContext *bsf)
 #define FLAGS (AV_OPT_FLAG_VIDEO_PARAM | AV_OPT_FLAG_BSF_PARAM)
 static const AVOption h264_abstimecode_options[] = {
     {"frames", "Which frames to insert timecode into (0=key frames, 1=all)", OFFSET(frames), AV_OPT_TYPE_UINT64, {.i64 = 0}, 0, 1, .flags = FLAGS},
-    {"offset", "Offset from actual time in microseconds", OFFSET(offset), AV_OPT_TYPE_UINT64, {.i64 = 0}, -60000000, 60000000, .flags = FLAGS},
+    {"offset", "Offset from actual time in microseconds", OFFSET(offset), AV_OPT_TYPE_INT64, {.i64 = 0}, -60000000, 60000000, .flags = FLAGS},
+    {"time", "Absolute timestamp for the first frame in microseconds, mutually exclusive with offset", OFFSET(time), AV_OPT_TYPE_INT64, {.i64 = 0}, 0, INT64_MAX, .flags = FLAGS},
     {NULL}};
 
 static const AVClass h264_abstimecode_class = {
