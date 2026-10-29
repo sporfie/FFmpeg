@@ -4,11 +4,11 @@ orbs:
   aws-cli: circleci/aws-cli@4.1.3
 
 jobs:
-  # Builds sporfie/Dockerfile.nvidia and pushes it as server-cam-hw-base:<commit>, the base image
-  # sporfie-server-cam's docker/Dockerfile.nvidia is built FROM. Bump the tag there to pick a new one up.
+  # Builds sporfie/Dockerfile.nvidia and pushes it as ffmpeg-sporfie:<date>-nvidia (e.g. 20260820-nvidia),
+  # the ffmpeg image server-cam-hw-base is built on.
   # Uses a machine (x86) executor: the build compiles ffmpeg and its CUDA kernels against the CUDA
   # toolkit, which cannot run on the ARM runner nor in setup_remote_docker's small engine.
-  build-and-push-server-cam-hw-base:
+  build-and-push-ffmpeg-sporfie-nvidia:
     machine:
       image: ubuntu-2204:current
       docker_layer_caching: true
@@ -17,9 +17,15 @@ jobs:
       AWS_REGION: us-east-1
       AWS_ACCOUNT_ID: "466556037113"
       ECR_REGISTRY: "466556037113.dkr.ecr.us-east-1.amazonaws.com"
-      IMAGE_NAME: server-cam-hw-base
+      IMAGE_NAME: ffmpeg-sporfie
     steps:
       - checkout
+      # Taken once, at the start, so the build and the push agree on it even when the build runs past
+      # midnight. A second build on the same day replaces that day's tag.
+      - run:
+          name: Set image tag
+          command: |
+            echo "export IMAGE_TAG=$(date -u +%Y%m%d)-nvidia" >> "$BASH_ENV"
       # Assume AWS role via OIDC (no static keys)
       - aws-cli/setup:
           role_arn: "arn:aws:iam::466556037113:role/circleci_role"
@@ -36,20 +42,20 @@ jobs:
           name: Build ffmpeg (nvidia)
           no_output_timeout: 60m
           command: |
-            docker build -f sporfie/Dockerfile.nvidia -t "$ECR_REGISTRY/$IMAGE_NAME:$CIRCLE_SHA1" .
+            docker build -f sporfie/Dockerfile.nvidia -t "$ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG" .
       - run:
           name: Push to ECR
           command: |
-            docker push "$ECR_REGISTRY/$IMAGE_NAME:$CIRCLE_SHA1"
-            echo "Pushed $ECR_REGISTRY/$IMAGE_NAME:$CIRCLE_SHA1"
+            docker push "$ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG"
+            echo "Pushed $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG (commit $CIRCLE_SHA1)"
 
 workflows:
   version: 2
 
-  # Only the sporfie branch: server-cam-hw-base tracks it, and branches cut from it carry this file too.
+  # Only the sporfie branch: the image tracks it, and branches cut from it carry this file too.
   build-and-push:
     jobs:
-      - build-and-push-server-cam-hw-base:
+      - build-and-push-ffmpeg-sporfie-nvidia:
           filters:
             branches:
               only: sporfie

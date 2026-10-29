@@ -5,13 +5,13 @@
 # The build context must therefore be the repository root.
 #
 # From this directory (sporfie/):
-#     docker build -f Dockerfile.nvidia -t 466556037113.dkr.ecr.us-east-1.amazonaws.com/server-cam-hw-base:{commit} ..
+#     docker build -f Dockerfile.nvidia -t 466556037113.dkr.ecr.us-east-1.amazonaws.com/ffmpeg-sporfie:{date}-nvidia ..
 #
 # From the repository root:
-#     docker build -f sporfie/Dockerfile.nvidia -t 466556037113.dkr.ecr.us-east-1.amazonaws.com/server-cam-hw-base:{commit} .
+#     docker build -f sporfie/Dockerfile.nvidia -t 466556037113.dkr.ecr.us-east-1.amazonaws.com/ffmpeg-sporfie:{date}-nvidia .
 #
 # Run (requires the NVIDIA container runtime):
-#     docker run --rm --gpus all 466556037113.dkr.ecr.us-east-1.amazonaws.com/server-cam-hw-base:{commit} -buildconf
+#     docker run --rm --gpus all 466556037113.dkr.ecr.us-east-1.amazonaws.com/ffmpeg-sporfie:{date}-nvidia -buildconf
 #
 # The repository root .dockerignore keeps host build artifacts (.o files,
 # config.h, ffmpeg binaries, .git) out of the context.
@@ -20,8 +20,8 @@
 # https://hub.docker.com/r/jrottenberg/ffmpeg/ , which this file is derived from.
 #
 # This must be built on an x86 platform. CircleCI (.circleci/config.yml) builds it on every push to the
-# sporfie branch and pushes 466556037113.dkr.ecr.us-east-1.amazonaws.com/server-cam-hw-base:{commit},
-# the base image of sporfie-server-cam's docker/Dockerfile.nvidia.
+# sporfie branch and pushes 466556037113.dkr.ecr.us-east-1.amazonaws.com/ffmpeg-sporfie:{date}-nvidia
+# (e.g. 20260820-nvidia), the ffmpeg image server-cam-hw-base is built on.
 
 FROM nvcr.io/nvidia/cuda:12.3.1-devel-ubuntu22.04 AS devel-base
 ENV	    NVIDIA_DRIVER_CAPABILITIES=compute,utility,video
