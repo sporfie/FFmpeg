@@ -4,6 +4,7 @@
 # .dockerignore needs to match at any depth.
 .git
 .github
+.circleci
 
 # configure / make output (configure regenerates all of it in the container)
 /.config
